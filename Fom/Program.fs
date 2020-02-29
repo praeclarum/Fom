@@ -8,16 +8,28 @@ module WishfulThinking =
             Age : int
         }
 
-    type ContactInfo = 
+    type PersonDiff =
+        {
+            Name : string option
+            Age : int option
+        }
+
+    type Contact = 
         | PhoneNumber of string
         | Address of string
         | DontCall
 
-    let p1 = { Name = "Frank"; Age = 39 }
+    //type ContactDiff =
+        //| PhoneNumberDiff of string option
+        //| AddressDiff of string option
+        //| DontCallDiff
 
-    let p2 = { Name = "Frank"; Age = 40 }
 
-    //let diff = p2 - p1
+    //let p1 = { Name = "Frank"; Age = 39 }
+
+    //let p2 = { Name = "Frank"; Age = 40 }
+
+    //let diff : PersonDiff = p2 - p1
 
     //match diff.Name with
     //| None -> () // I didn't change my name
@@ -80,15 +92,15 @@ module CodeGenerator =
     let writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
 
         let writeStructMem (m : StructMember) =
-            w.WriteLine ("       {0} : {1}", m.Name, m.MemberType)
+            w.WriteLine ("       {0} : {1} option", m.Name, m.MemberType)
         let writeEnumMem (m : EnumMember) =
             let line =
                 match m.MemberType with
-                | Some x -> sprintf "    | %s of %s" m.Name x
+                | Some x -> sprintf "    | %s of %s option" m.Name x
                 | None -> sprintf "    | %s" m.Name
             w.WriteLine (line)
 
-        w.WriteLine ("type {0} =", t.Name)
+        w.WriteLine ("type {0}Diff =", t.Name)
 
         match t.Body with
         | StructBody members ->
@@ -99,9 +111,54 @@ module CodeGenerator =
             members |> Seq.iter writeEnumMem
 
     writeDiffType w TestData.personType
+    writeDiffType w TestData.contactType
 
 
 
+
+    #r "/Users/fak/.nuget/packages/fsharp.compiler.service/32.0.0/lib/net461/FSharp.Compiler.Service.dll"
+
+    open FSharp.Compiler
+    open FSharp.Compiler.Ast
+
+    module DataLoader =
+
+        let parse (path : string) =
+            let checker = SourceCodeServices.FSharpChecker.Create ()
+            let code = IO.File.ReadAllText path
+            let sourceText = FSharp.Compiler.Text.SourceText.ofString code
+            let poptions =
+                { SourceCodeServices.FSharpParsingOptions.Default
+                    with
+                     SourceFiles = [| path |]
+                }
+            let parseResult =
+                checker.ParseFile ("foo.fs", sourceText, poptions)
+                |> Async.RunSynchronously
+            parseResult.ParseTree
+
+        let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : InputData.FomType list =
+            printfn "FOUND MODULE %A" moduleId
+            []
+
+        let convertAstToInputData (ast : Ast.ParsedInput option) : InputData.FomType list =
+            match ast with
+            | Some (ParsedInput.ImplFile (ParsedImplFileInput (_,_,_,_,_,mods,_))) ->
+                mods
+                |> List.collect (fun (SynModuleOrNamespace(_,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
+                    decls
+                    |> List.collect (function
+                        | SynModuleDecl.NestedModule (SynComponentInfo.ComponentInfo (_,_,_,mId,_,_,_,_),_,decls,_,_) ->
+                            convertModuleToInputData mId decls 
+                        | _ -> []))
+            | _ -> List.empty
+
+        let path = "/Users/fak/Dropbox/Projects/Fom/Fom/Program.fs"
+        let ast = parse path
+
+        convertAstToInputData ast
+
+        ()
 
 
 
