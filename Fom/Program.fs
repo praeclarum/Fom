@@ -10,8 +10,8 @@ module WishfulThinking =
 
     type PersonDiff =
         {
-            Name : string option
-            Age : int option
+            NameDiff : string option
+            AgeDiff : int option
         }
 
     type Contact = 
@@ -25,11 +25,13 @@ module WishfulThinking =
         //| DontCallDiff
 
 
-    //let p1 = { Name = "Frank"; Age = 39 }
+    let p1 = { Name = "Frank"; Age = 39 }
 
-    //let p2 = { Name = "Frank"; Age = 40 }
+    let p2 = { Name = "Frank"; Age = 40 }
 
-    //let diff : PersonDiff = p2 - p1
+    let diff : PersonDiff = p2 - p1
+
+    let p2_again = p1 + diff
 
     //match diff.Name with
     //| None -> () // I didn't change my name
@@ -92,21 +94,21 @@ module CodeGenerator =
     let writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
 
         let writeStructMem (m : StructMember) =
-            w.WriteLine ("       {0} : {1} option", m.Name, m.MemberType)
+            w.WriteLine ("           {0} : {1} option", m.Name, m.MemberType)
         let writeEnumMem (m : EnumMember) =
             let line =
                 match m.MemberType with
-                | Some x -> sprintf "    | %s of %s option" m.Name x
-                | None -> sprintf "    | %s" m.Name
+                | Some x -> sprintf "        | %s of %s option" m.Name x
+                | None -> sprintf "        | %s" m.Name
             w.WriteLine (line)
 
-        w.WriteLine ("type {0}Diff =", t.Name)
+        w.WriteLine ("    type {0}Diff =", t.Name)
 
         match t.Body with
         | StructBody members ->
-            w.WriteLine "    {"
+            w.WriteLine "        {"
             members |> Seq.iter writeStructMem
-            w.WriteLine "    }"
+            w.WriteLine "        }"
         | EnumBody members ->
             members |> Seq.iter writeEnumMem
 
@@ -116,49 +118,79 @@ module CodeGenerator =
 
 
 
-    #r "/Users/fak/.nuget/packages/fsharp.compiler.service/32.0.0/lib/net461/FSharp.Compiler.Service.dll"
+#r "/Users/fak/.nuget/packages/fsharp.compiler.service/32.0.0/lib/net461/FSharp.Compiler.Service.dll"
 
-    open FSharp.Compiler
-    open FSharp.Compiler.Ast
+open FSharp.Compiler
+open FSharp.Compiler.Ast
 
-    module DataLoader =
+module DataLoader =
 
-        let parse (path : string) =
-            let checker = SourceCodeServices.FSharpChecker.Create ()
-            let code = IO.File.ReadAllText path
-            let sourceText = FSharp.Compiler.Text.SourceText.ofString code
-            let poptions =
-                { SourceCodeServices.FSharpParsingOptions.Default
-                    with
-                     SourceFiles = [| path |]
-                }
-            let parseResult =
-                checker.ParseFile ("foo.fs", sourceText, poptions)
-                |> Async.RunSynchronously
-            parseResult.ParseTree
+    let parse (path : string) =
+        let checker = SourceCodeServices.FSharpChecker.Create ()
+        let code = IO.File.ReadAllText path
+        let sourceText = FSharp.Compiler.Text.SourceText.ofString code
+        let poptions =
+            { SourceCodeServices.FSharpParsingOptions.Default
+                with
+                 SourceFiles = [| path |]
+            }
+        let parseResult =
+            checker.ParseFile ("foo.fs", sourceText, poptions)
+            |> Async.RunSynchronously
+        parseResult.ParseTree
 
-        let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : InputData.FomType list =
-            printfn "FOUND MODULE %A" moduleId
-            []
+    let path = "/Users/fak/Dropbox/Projects/Fom/Fom/Program.fs"
+    let ast = parse path
 
-        let convertAstToInputData (ast : Ast.ParsedInput option) : InputData.FomType list =
-            match ast with
-            | Some (ParsedInput.ImplFile (ParsedImplFileInput (_,_,_,_,_,mods,_))) ->
-                mods
-                |> List.collect (fun (SynModuleOrNamespace(_,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
-                    decls
-                    |> List.collect (function
-                        | SynModuleDecl.NestedModule (SynComponentInfo.ComponentInfo (_,_,_,mId,_,_,_,_),_,decls,_,_) ->
-                            convertModuleToInputData mId decls 
-                        | _ -> []))
-            | _ -> List.empty
+    let stringIdent (moduleId : LongIdent) =
+        String.Join (".", moduleId)
 
-        let path = "/Users/fak/Dropbox/Projects/Fom/Fom/Program.fs"
-        let ast = parse path
+    let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : InputData.FomType list =
+        printfn "FOUND MODULE %A" moduleId
+        let moduleNamespace = stringIdent moduleId
+        decls
+        |> List.collect (function
+            | SynModuleDecl.Types (types, _) ->
+                types
+                |> List.collect (fun (x : SynTypeDefn) ->
+                    match x with
+                    | TypeDefn (SynComponentInfo.ComponentInfo (_,_,_,tId,_,_,_,_),
+                                SynTypeDefnRepr.Simple (SynTypeDefnSimpleRepr.Record (_, x, _), _),
+                                _, _) ->
+                        let typeName = stringIdent tId
+                        let fields = [||]
+                        [{
+                            Name = typeName
+                            Namespace = moduleNamespace
+                            Body = StructBody fields
+                        }]
+                    | _ -> [])
+            | _ -> [])
 
-        convertAstToInputData ast
+    let convertAstToInputData (ast : Ast.ParsedInput option) : InputData.FomType list =
+        match ast with
+        | Some (ParsedInput.ImplFile (ParsedImplFileInput (_,_,_,_,_,mods,_))) ->
+            mods
+            |> List.collect (fun (SynModuleOrNamespace(_,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
+                decls
+                |> List.collect (function
+                    | SynModuleDecl.NestedModule (SynComponentInfo.ComponentInfo (_,_,_,mId,_,_,_,_),_,decls,_,_) ->
+                        convertModuleToInputData mId decls 
+                    | _ -> []))
+        | _ -> List.empty
 
-        ()
+
+    let allTypes = convertAstToInputData ast
+
+    let w = Console.Out
+
+    allTypes
+    |> Seq.groupBy (fun x -> x.Namespace)
+    |> Seq.iter (fun (m, types) ->
+        w.WriteLine ("module {0} = ", m)
+        types |> Seq.iter (CodeGenerator.writeDiffType Console.Out))
+
+    ()
 
 
 
