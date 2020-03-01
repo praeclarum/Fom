@@ -8,8 +8,17 @@ module WishfulThinking =
             Age : int
         }
 
+    type PersonDiff =
+         {
+            NameDiff : string option
+            AgeDiff : string option
+         }
+         static member (-) (x : Person, y: Person) =
+             {
+                 NameDiff = if x.Name <> y.Name then Some x.Name else None
+                 AgeDiff = if x.Age <> y.Age then Some x.Age else None
+             }
 
-     
     type Contact = 
         | PhoneNumber of string
         | Address of string
@@ -88,7 +97,6 @@ module CodeGenerator =
     let t = TestData.personType
 
     let writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
-
         let writeStructMem (m : StructMember) =
             w.WriteLine ("           {0}Diff : {1} option", m.Name, m.MemberType)
         let writeStructDiff (ms : StructMember[]) =
@@ -97,15 +105,12 @@ module CodeGenerator =
             for m in ms do
                 w.WriteLine ("                {0}Diff = if x.{0} <> y.{0} then Some x.{0} else None", m.Name, m.Name)
             w.WriteLine ("            }")
-
-
         let writeEnumMem (m : EnumMember) =
             let line =
                 match m.MemberType with
                 | Some x -> sprintf "        | %s of %s option" m.Name x
                 | None -> sprintf "        | %s" m.Name
             w.WriteLine (line)
-
         w.WriteLine ("    type {0}Diff =", t.Name)
 
         match t.Body with
