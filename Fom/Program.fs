@@ -8,12 +8,8 @@ module WishfulThinking =
             Age : int
         }
 
-    type PersonDiff =
-        {
-            NameDiff : string option
-            AgeDiff : int option
-        }
 
+     
     type Contact = 
         | PhoneNumber of string
         | Address of string
@@ -94,7 +90,15 @@ module CodeGenerator =
     let writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
 
         let writeStructMem (m : StructMember) =
-            w.WriteLine ("           {0} : {1} option", m.Name, m.MemberType)
+            w.WriteLine ("           {0}Diff : {1} option", m.Name, m.MemberType)
+        let writeStructDiff (ms : StructMember[]) =
+            w.WriteLine ("        static member (-) (x : {0}, y: {0}) =", t.Name)
+            w.WriteLine ("            {")
+            for m in ms do
+                w.WriteLine ("                {0}Diff = if x.{0} <> y.{0} then Some x.{0} else None", m.Name, m.Name)
+            w.WriteLine ("            }")
+
+
         let writeEnumMem (m : EnumMember) =
             let line =
                 match m.MemberType with
@@ -109,11 +113,22 @@ module CodeGenerator =
             w.WriteLine "        {"
             members |> Seq.iter writeStructMem
             w.WriteLine "        }"
+            writeStructDiff members
         | EnumBody members ->
             members |> Seq.iter writeEnumMem
 
+        
+
     writeDiffType w TestData.personType
     writeDiffType w TestData.contactType
+
+    allTypes
+    |> Seq.groupBy (fun x -> x.Namespace)
+    |> Seq.iter (fun (m, types) ->
+        w.WriteLine ("module {0} = ", m)
+        types |> Seq.iter (writeDiffType Console.Out))
+
+
 
 
 
@@ -155,10 +170,24 @@ module DataLoader =
                 |> List.collect (fun (x : SynTypeDefn) ->
                     match x with
                     | TypeDefn (SynComponentInfo.ComponentInfo (_,_,_,tId,_,_,_,_),
-                                SynTypeDefnRepr.Simple (SynTypeDefnSimpleRepr.Record (_, x, _), _),
+                                SynTypeDefnRepr.Simple (SynTypeDefnSimpleRepr.Record (_, fields : SynField list, _), _),
                                 _, _) ->
                         let typeName = stringIdent tId
-                        let fields = [||]
+                        let fields : StructMember[] =
+                            fields
+                            |> Seq.choose (
+                                function
+                                | SynField.Field (id,_,name, y, z, _, _, _) ->
+                                    let name =
+                                        match name with
+                                        | Some x -> string x
+                                        | None -> "IDontKnow"
+                                    let r:StructMember option =
+                                        Some { Name = name;
+                                               MemberType = "string" }
+                                    r
+                                | _ -> None)
+                            |> Array.ofSeq
                         [{
                             Name = typeName
                             Namespace = moduleNamespace
