@@ -51,8 +51,7 @@ let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : F
                     let fields : RecordMember[] =
                         fields
                         |> Seq.choose (
-                            function
-                            | SynField.Field (id,_,name, fieldType, z, _, _, _) ->
+                            fun (SynField.Field (id,_,name, fieldType, z, _, _, _)) ->
                                 let name =
                                     match name with
                                     | Some x -> string x
@@ -62,8 +61,7 @@ let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : F
                                 let r:RecordMember option =
                                     Some { Name = name;
                                            MemberType = fieldType }
-                                r
-                            | _ -> None)
+                                r)
                         |> Array.ofSeq
                     [{
                         Name = typeName
