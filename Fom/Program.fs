@@ -155,10 +155,12 @@ module CodeGenerator =
 
 //#r "/Users/fak/.nuget/packages/fsharp.compiler.service/32.0.0/lib/net461/FSharp.Compiler.Service.dll"
 
-open FSharp.Compiler
-open FSharp.Compiler.Ast
+module TypeParser =
 
-module DataLoader =
+    open TypeDomain
+
+    open FSharp.Compiler
+    open FSharp.Compiler.Ast
 
     let parse (path : string) =
         let checker = SourceCodeServices.FSharpChecker.Create ()
@@ -180,7 +182,13 @@ module DataLoader =
     let stringIdent (moduleId : LongIdent) =
         String.Join (".", moduleId)
 
-    let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : InputData.FomType list =
+    let synTypeToString (typ : SynType) : string =
+        match typ with
+        | SynType.LongIdent (LongIdentWithDots (id, _)) ->
+            stringIdent id
+        | _ -> failwithf "I don't know how to deal with %A" typ
+
+    let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : FomType list =
         printfn "FOUND MODULE %A" moduleId
         let moduleNamespace = stringIdent moduleId
         decls
@@ -197,26 +205,28 @@ module DataLoader =
                             fields
                             |> Seq.choose (
                                 function
-                                | SynField.Field (id,_,name, y, z, _, _, _) ->
+                                | SynField.Field (id,_,name, fieldType, z, _, _, _) ->
                                     let name =
                                         match name with
                                         | Some x -> string x
                                         | None -> "IDontKnow"
-                                    let r:StructMember option =
+                                    let fieldType =
+                                        synTypeToString fieldType
+                                    let r:RecordMember option =
                                         Some { Name = name;
-                                               MemberType = "string" }
+                                               MemberType = fieldType }
                                     r
                                 | _ -> None)
                             |> Array.ofSeq
                         [{
                             Name = typeName
                             Namespace = moduleNamespace
-                            Body = StructBody fields
+                            Body = RecordBody fields
                         }]
                     | _ -> [])
             | _ -> [])
 
-    let convertAstToInputData (ast : Ast.ParsedInput option) : InputData.FomType list =
+    let convertAstToInputData (ast : Ast.ParsedInput option) : FomType list =
         match ast with
         | Some (ParsedInput.ImplFile (ParsedImplFileInput (_,_,_,_,_,mods,_))) ->
             mods
