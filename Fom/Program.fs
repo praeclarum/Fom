@@ -50,5 +50,19 @@ module WishfulThinking =
 
 [<EntryPoint>]
 let main argv =
-    printfn "Hello World from F#!"
-    0 // return an integer exit code
+
+    try
+        let fileName = argv.[0]
+        let fullPath = IO.Path.GetFullPath fileName
+
+        printfn "FOM! %A" fullPath
+
+
+        let types = TypeParser.parseAllTypes fullPath
+
+        CodeGenerator.writeAllTypes Console.Out types
+
+        0 // return an integer exit code
+    with ex ->
+        printfn "ERROR! %O" ex
+        1

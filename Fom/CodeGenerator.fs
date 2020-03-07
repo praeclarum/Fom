@@ -31,9 +31,7 @@ module TestData =
         }
 
 
-let t = TestData.personType
-
-let writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
+let private writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
 
     let writeStructMem (m : RecordMember) =
         w.WriteLine ("           {0}Diff : {1} option", m.Name, m.MemberType)
@@ -64,8 +62,8 @@ let writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
 
     
 
-writeDiffType w TestData.personType
-writeDiffType w TestData.contactType
+//writeDiffType w TestData.personType
+//writeDiffType w TestData.contactType
 
 //allTypes
 //|> Seq.groupBy (fun x -> x.Namespace)
@@ -74,5 +72,11 @@ writeDiffType w TestData.contactType
     //types |> Seq.iter (writeDiffType Console.Out))
 
 
+let writeAllTypes (w : IO.TextWriter) allTypes = 
+    allTypes
+    |> Seq.groupBy (fun x -> x.Namespace)
+    |> Seq.iter (fun (m, types) ->
+        w.WriteLine ("module {0} = ", m)
+        types |> Seq.iter (writeDiffType w))
 
 

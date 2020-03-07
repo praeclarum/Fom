@@ -9,7 +9,7 @@ open TypeDomain
 open FSharp.Compiler
 open FSharp.Compiler.Ast
 
-let parse (path : string) =
+let private parse (path : string) =
     let checker = SourceCodeServices.FSharpChecker.Create ()
     let code = IO.File.ReadAllText path
     let sourceText = FSharp.Compiler.Text.SourceText.ofString code
@@ -23,19 +23,16 @@ let parse (path : string) =
         |> Async.RunSynchronously
     parseResult.ParseTree
 
-let path = "/Users/fak/Dropbox/Projects/Fom/Fom/Program.fs"
-let ast = parse path
-
-let stringIdent (moduleId : LongIdent) =
+let private stringIdent (moduleId : LongIdent) =
     String.Join (".", moduleId)
 
-let synTypeToString (typ : SynType) : string =
+let private synTypeToString (typ : SynType) : string =
     match typ with
     | SynType.LongIdent (LongIdentWithDots (id, _)) ->
         stringIdent id
     | _ -> failwithf "I don't know how to deal with %A" typ
 
-let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : FomType list =
+let private convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : FomType list =
     printfn "FOUND MODULE %A" moduleId
     let moduleNamespace = stringIdent moduleId
     decls
@@ -71,7 +68,7 @@ let convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : F
                 | _ -> [])
         | _ -> [])
 
-let convertAstToInputData (ast : Ast.ParsedInput option) : FomType list =
+let private convertAstToInputData (ast : Ast.ParsedInput option) : FomType list =
     match ast with
     | Some (ParsedInput.ImplFile (ParsedImplFileInput (_,_,_,_,_,mods,_))) ->
         mods
@@ -84,18 +81,10 @@ let convertAstToInputData (ast : Ast.ParsedInput option) : FomType list =
     | _ -> List.empty
 
 
-let allTypes = convertAstToInputData ast
+let parseAllTypes path =
+    let ast = parse path
+    convertAstToInputData ast
 
-let w = Console.Out
-
-let idk () = 
-    allTypes
-    |> Seq.groupBy (fun x -> x.Namespace)
-    |> Seq.iter (fun (m, types) ->
-        w.WriteLine ("module {0} = ", m)
-        types |> Seq.iter (CodeGenerator.writeDiffType Console.Out))
-
-    ()
 
 
 
