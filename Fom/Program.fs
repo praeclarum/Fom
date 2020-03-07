@@ -11,13 +11,22 @@ module WishfulThinking =
     type PersonDiff =
          {
             NameDiff : string option
-            AgeDiff : string option
+            AgeDiff : int option
          }
-         static member (-) (x : Person, y: Person) =
-             {
-                 NameDiff = if x.Name <> y.Name then Some x.Name else None
-                 AgeDiff = if x.Age <> y.Age then Some x.Age else None
-             }
+
+    //type Person with
+        //static member (-) (x: Person, y:Person) =
+            //{
+            //    NameDiff = if x.Name <> y.Name then Some x.Name else None
+            //    AgeDiff = if x.Age <> y.Age then Some x.Age else None
+            //}
+
+    let (-) (x : Person) (y: Person) =
+        {
+            NameDiff = if x.Name <> y.Name then Some x.Name else None
+            AgeDiff = if x.Age <> y.Age then Some x.Age else None
+        }
+
 
     type Contact = 
         | PhoneNumber of string
@@ -36,7 +45,7 @@ module WishfulThinking =
 
     let diff : PersonDiff = p2 - p1
 
-    let p2_again = p1 + diff
+    //let p2_again = p1 + diff
 
     //match diff.Name with
     //| None -> () // I didn't change my name
@@ -45,7 +54,7 @@ module WishfulThinking =
 
 
 
-module InputData =
+module TypeDomain =
 
     type FomType =
         {
@@ -55,25 +64,25 @@ module InputData =
         }
 
     and TypeBody =
-        | StructBody of Members : StructMember[]
-        | EnumBody of Members : EnumMember[]
+        | RecordBody of Members : RecordMember[]
+        | UnionBody of Members : UnionMember[]
 
-    and StructMember = {
+    and RecordMember = {
         Name : string; MemberType : string
     }
-    and EnumMember = {
+    and UnionMember = {
         Name : string; MemberType : string option
     }
 
-open InputData
-
 module TestData =
+
+    open TypeDomain
 
     let personType =
         {
             Name = "Person"
             Namespace = "WishfulThinking"
-            Body = StructBody [|
+            Body = RecordBody [|
                 { Name = "Name"; MemberType = "string" }
                 { Name = "Age"; MemberType = "int" }
             |]
@@ -82,7 +91,7 @@ module TestData =
         {
             Name = "Contact"
             Namespace = "WishfulThinking"
-            Body = EnumBody [|
+            Body = UnionBody [|
                 { Name = "PhoneNumber"; MemberType = Some "string" }
                 { Name = "Address"; MemberType = Some "int" }
                 { Name = "DontCall"; MemberType = None }
@@ -92,20 +101,26 @@ module TestData =
 
 module CodeGenerator =
 
+    open System
+    open TypeDomain
+
     let w = Console.Out
 
     let t = TestData.personType
 
     let writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
-        let writeStructMem (m : StructMember) =
+
+        let writeStructMem (m : RecordMember) =
             w.WriteLine ("           {0}Diff : {1} option", m.Name, m.MemberType)
-        let writeStructDiff (ms : StructMember[]) =
-            w.WriteLine ("        static member (-) (x : {0}, y: {0}) =", t.Name)
-            w.WriteLine ("            {")
+
+        let writeRecordDiff (ms : RecordMember[]) =
+            w.WriteLine ("    let (-) (x : {0}, y: {0}) =", t.Name)
+            w.WriteLine ("        {")
             for m in ms do
-                w.WriteLine ("                {0}Diff = if x.{0} <> y.{0} then Some x.{0} else None", m.Name, m.Name)
-            w.WriteLine ("            }")
-        let writeEnumMem (m : EnumMember) =
+                w.WriteLine ("            {0}Diff = if x.{0} <> y.{0} then Some x.{0} else None", m.Name, m.Name)
+            w.WriteLine ("        }")
+
+        let writeEnumMem (m : UnionMember) =
             let line =
                 match m.MemberType with
                 | Some x -> sprintf "        | %s of %s option" m.Name x
@@ -114,12 +129,12 @@ module CodeGenerator =
         w.WriteLine ("    type {0}Diff =", t.Name)
 
         match t.Body with
-        | StructBody members ->
+        | RecordBody members ->
             w.WriteLine "        {"
             members |> Seq.iter writeStructMem
             w.WriteLine "        }"
-            writeStructDiff members
-        | EnumBody members ->
+            writeRecordDiff members
+        | UnionBody members ->
             members |> Seq.iter writeEnumMem
 
         
@@ -127,18 +142,18 @@ module CodeGenerator =
     writeDiffType w TestData.personType
     writeDiffType w TestData.contactType
 
-    allTypes
-    |> Seq.groupBy (fun x -> x.Namespace)
-    |> Seq.iter (fun (m, types) ->
-        w.WriteLine ("module {0} = ", m)
-        types |> Seq.iter (writeDiffType Console.Out))
+    //allTypes
+    //|> Seq.groupBy (fun x -> x.Namespace)
+    //|> Seq.iter (fun (m, types) ->
+        //w.WriteLine ("module {0} = ", m)
+        //types |> Seq.iter (writeDiffType Console.Out))
 
 
 
 
 
 
-#r "/Users/fak/.nuget/packages/fsharp.compiler.service/32.0.0/lib/net461/FSharp.Compiler.Service.dll"
+//#r "/Users/fak/.nuget/packages/fsharp.compiler.service/32.0.0/lib/net461/FSharp.Compiler.Service.dll"
 
 open FSharp.Compiler
 open FSharp.Compiler.Ast
@@ -178,7 +193,7 @@ module DataLoader =
                                 SynTypeDefnRepr.Simple (SynTypeDefnSimpleRepr.Record (_, fields : SynField list, _), _),
                                 _, _) ->
                         let typeName = stringIdent tId
-                        let fields : StructMember[] =
+                        let fields : RecordMember[] =
                             fields
                             |> Seq.choose (
                                 function
