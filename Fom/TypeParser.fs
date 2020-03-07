@@ -19,7 +19,8 @@ let private parse (path : string) =
              SourceFiles = [| path |]
         }
     let parseResult =
-        checker.ParseFile ("foo.fs", sourceText, poptions)
+        let fileName = IO.Path.GetFileName path
+        checker.ParseFile (fileName, sourceText, poptions)
         |> Async.RunSynchronously
     parseResult.ParseTree
 
