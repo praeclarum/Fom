@@ -37,10 +37,18 @@ let private writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
         w.WriteLine ("           {0}Diff : {1} option", m.Name, m.MemberType)
 
     let writeRecordDiff (ms : RecordMember[]) =
-        w.WriteLine ("    let (-) (x : {0}, y: {0}) =", t.Name)
-        w.WriteLine ("        {")
+        w.WriteLine ("    let (-) (x : {0}) (y: {0}) =", t.Name)
         for m in ms do
-            w.WriteLine ("            {0}Diff = if x.{0} <> y.{0} then Some x.{0} else None", m.Name, m.Name)
+            w.WriteLine ("        let local{0}Diff = if x.{0} <> y.{0} then Some x.{0} else None", m.Name, m.Name)
+        let condition =
+            let cons =
+                ms
+                |> Seq.map (fun x -> sprintf "Option.isNone local%sDiff" x.Name)
+            String.Join (" && ", cons)
+        w.WriteLine ("        if {0} then None", condition)
+        w.WriteLine ("        else Some {")
+        for m in ms do
+            w.WriteLine ("            {0}Diff = local{0}Diff", m.Name)
         w.WriteLine ("        }")
 
     let writeEnumMem (m : UnionMember) =

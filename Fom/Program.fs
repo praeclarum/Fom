@@ -5,24 +5,18 @@ module WishfulThinking =
     open TestDomain
 
     type PersonDiff =
-         {
-            NameDiff : string option
-            AgeDiff : int option
-         }
-
-    //type Person with
-        //static member (-) (x: Person, y:Person) =
-            //{
-            //    NameDiff = if x.Name <> y.Name then Some x.Name else None
-            //    AgeDiff = if x.Age <> y.Age then Some x.Age else None
-            //}
-
-    let (-) (x : Person) (y: Person) =
         {
-            NameDiff = if x.Name <> y.Name then Some x.Name else None
-            AgeDiff = if x.Age <> y.Age then Some x.Age else None
+           NameDiff : string option
+           AgeDiff : int option
         }
-
+    let (-) (x : Person) (y: Person) =
+            let localNameDiff = if x.Name <> y.Name then Some x.Name else None
+            let localAgeDiff = if x.Age <> y.Age then Some x.Age else None
+            if Option.isNone localNameDiff && Option.isNone localAgeDiff then None
+            else Some {
+                NameDiff = localNameDiff
+                AgeDiff = localAgeDiff
+            }
 
     type Contact = 
         | PhoneNumber of string
@@ -39,7 +33,7 @@ module WishfulThinking =
 
     let p2 = { Name = "Frank"; Age = 40 }
 
-    let diff : PersonDiff = p2 - p1
+    let diff = p2 - p1
 
     //let p2_again = p1 + diff
 
