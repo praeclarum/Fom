@@ -60,11 +60,11 @@ let main argv =
             let fileName = argv.[0]
             let fullPath = IO.Path.GetFullPath fileName
 
-            printfn "FOM! %A" fullPath
+            //printfn "FOM! %A" fullPath
 
             let types = TypeParser.parseAllTypes fullPath
 
-            printfn "ALL TYPES %A" types
+            //printfn "ALL TYPES %A" types
 
             CodeGenerator.writeAllTypes Console.Out types
 

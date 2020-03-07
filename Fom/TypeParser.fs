@@ -33,49 +33,55 @@ let private synTypeToString (typ : SynType) : string =
         stringIdent id
     | _ -> failwithf "I don't know how to deal with %A" typ
 
-let private convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : FomType list =
+let rec private convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : FomType list =
     printfn "FOUND MODULE %A" moduleId
     let moduleNamespace = stringIdent moduleId
     decls
     |> List.collect (function
-        | SynModuleDecl.Types (types, _) ->
-            types
-            |> List.collect (fun (x : SynTypeDefn) ->
-                match x with
-                | TypeDefn (SynComponentInfo.ComponentInfo (_,_,_,tId,_,_,_,_),
-                            SynTypeDefnRepr.Simple (SynTypeDefnSimpleRepr.Record (_, fields : SynField list, _), _),
-                            _, _) ->
-                    let typeName = stringIdent tId
-                    let fields : RecordMember[] =
-                        fields
-                        |> Seq.choose (
-                            fun (SynField.Field (id,_,name, fieldType, z, _, _, _)) ->
-                                let name =
-                                    match name with
-                                    | Some x -> string x
-                                    | None -> "IDontKnow"
-                                let fieldType =
-                                    synTypeToString fieldType
-                                let r:RecordMember option =
-                                    Some { Name = name;
-                                           MemberType = fieldType }
-                                r)
-                        |> Array.ofSeq
-                    [{
-                        Name = typeName
-                        Namespace = moduleNamespace
-                        Body = RecordBody fields
-                    }]
-                | _ -> [])
+        | SynModuleDecl.Types (types, _) -> convertTypeToInputData moduleNamespace types
         | _ -> [])
+
+and private convertTypeToInputData (moduleNamespace : string) (types : SynTypeDefn list) =
+    types
+    |> List.collect (fun (x : SynTypeDefn) ->
+        match x with
+        | TypeDefn (SynComponentInfo.ComponentInfo (_,_,_,tId,_,_,_,_),
+                    SynTypeDefnRepr.Simple (SynTypeDefnSimpleRepr.Record (_, fields : SynField list, _), _),
+                    _, _) ->
+            let typeName = stringIdent tId
+            let fields : RecordMember[] =
+                fields
+                |> Seq.choose (
+                    fun (SynField.Field (id,_,name, fieldType, z, _, _, _)) ->
+                        let name =
+                            match name with
+                            | Some x -> string x
+                            | None -> "IDontKnow"
+                        let fieldType =
+                            synTypeToString fieldType
+                        let r:RecordMember option =
+                            Some { Name = name;
+                                   MemberType = fieldType }
+                        r)
+                |> Array.ofSeq
+            [{
+                Name = typeName
+                Namespace = moduleNamespace
+                Body = RecordBody fields
+            }]
+        | _ -> [])
+
 
 let private convertAstToInputData (ast : Ast.ParsedInput option) : FomType list =
     match ast with
     | Some (ParsedInput.ImplFile (ParsedImplFileInput (_,_,_,_,_,mods,_))) ->
         mods
-        |> List.collect (fun (SynModuleOrNamespace(_,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
+        |> List.collect (fun (SynModuleOrNamespace(modId,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
             decls
             |> List.collect (function
+                | SynModuleDecl.Types (types, _) ->
+                    let moduleNamespace = stringIdent modId
+                    convertTypeToInputData moduleNamespace types
                 | SynModuleDecl.NestedModule (SynComponentInfo.ComponentInfo (_,_,_,mId,_,_,_,_),_,decls,_,_) ->
                     convertModuleToInputData mId decls 
                 | _ -> []))
