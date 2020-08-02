@@ -32,7 +32,7 @@ type FomBuildTask () =
                 use output = new IO.StreamWriter (outputPath)
                 
                 CodeGenerator.writeAllTypes output types
-            false
+            true
         with ex ->
             this.Log.LogErrorFromException(ex, false)
             false

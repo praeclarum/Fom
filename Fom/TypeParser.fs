@@ -27,6 +27,11 @@ let private parse (path : string) =
 let private stringIdent (moduleId : LongIdent) =
     String.Join (".", moduleId)
 
+let private stringIdentWithDots (moduleId : LongIdentWithDots) =
+    match moduleId with
+    | LongIdentWithDots (ids, _) ->
+        stringIdent ids
+
 let rec private synTypeToString (typ : SynType) : string =
     match typ with
     | SynType.LongIdent (LongIdentWithDots (id, _)) ->
@@ -42,7 +47,7 @@ let rec private synTypeToString (typ : SynType) : string =
         failwithf "I don't know how to deal with %A (%O)" typ (typ.GetType())
 
 let rec private convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : FomType list =
-    printfn "FOUND MODULE %A" moduleId
+    //printfn "FOUND MODULE %A" moduleId
     let moduleNamespace = stringIdent moduleId
     decls
     |> List.collect (function
@@ -80,20 +85,31 @@ and private convertTypeToInputData (moduleNamespace : string) (types : SynTypeDe
         | _ -> [])
 
 
-let private convertAstToInputData (ast : Ast.ParsedInput option) : FomType list =
+let private convertAstToInputData (ast : Ast.ParsedInput option) : FomModule =
     match ast with
     | Some (ParsedInput.ImplFile (ParsedImplFileInput (_,_,_,_,_,mods,_))) ->
-        mods
-        |> List.collect (fun (SynModuleOrNamespace(modId,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
-            decls
-            |> List.collect (function
-                | SynModuleDecl.Types (types, _) ->
-                    let moduleNamespace = stringIdent modId
-                    convertTypeToInputData moduleNamespace types
-                | SynModuleDecl.NestedModule (SynComponentInfo.ComponentInfo (_,_,_,mId,_,_,_,_),_,decls,_,_) ->
-                    convertModuleToInputData mId decls 
-                | _ -> []))
-    | _ -> List.empty
+        let opens =
+            mods
+            |> List.collect (fun (SynModuleOrNamespace(modId,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
+                decls
+                |> List.collect (function
+                    | SynModuleDecl.Open (ident, _) ->
+                        [stringIdentWithDots ident]
+                    | x ->
+                        []))
+        let types =
+            mods
+            |> List.collect (fun (SynModuleOrNamespace(modId,isRec,isModule,decls,xmlDoc,attribs,access,range)) ->
+                decls
+                |> List.collect (function
+                    | SynModuleDecl.Types (types, _) ->
+                        let moduleNamespace = stringIdent modId
+                        convertTypeToInputData moduleNamespace types
+                    | SynModuleDecl.NestedModule (SynComponentInfo.ComponentInfo (_,_,_,mId,_,_,_,_),_,decls,_,_) ->
+                        convertModuleToInputData mId decls 
+                    | _ -> []))
+        { Opens = opens; Types = types }
+    | _ -> { Opens = []; Types = [] }
 
 
 let parseAllTypes path =

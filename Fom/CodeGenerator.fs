@@ -80,11 +80,24 @@ let private writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
     //types |> Seq.iter (writeDiffType Console.Out))
 
 
-let writeAllTypes (w : IO.TextWriter) allTypes = 
+let writeAllTypes (w : IO.TextWriter) (fomModule : FomModule) = 
+
+    let allTypes = fomModule.Types
+    let nss =
+        allTypes
+        |> List.map (fun x -> x.Namespace)
+        |> List.distinct
+
+    if nss.Length <> 1 then
+        failwith "Can only handle types from 1 namespace"
+    let ns = nss.Head
+
     allTypes
     |> Seq.groupBy (fun x -> x.Namespace)
     |> Seq.iter (fun (m, types) ->
-        w.WriteLine ("module {0}Diff = ", m)
+        w.WriteLine ("module {0}.{1}Diff", ns, m)
+        for o in fomModule.Opens do
+            w.WriteLine ("open {0}", o)
         types |> Seq.iter (writeDiffType w))
 
 

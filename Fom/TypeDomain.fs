@@ -18,3 +18,11 @@ and UnionMember = {
     Name : string; MemberType : string option
 }
 
+type FomModule =
+    {
+        Opens : string list
+        Types : FomType list
+    }
+
+
+

@@ -1,4 +1,6 @@
-module TodoDomainDiff = 
+module TodoDomain.TodoDomainDiff
+open System
+open System.Numerics
     type UserDataDiff =
         {
            ListsDiff : TodoList[] option

@@ -1,5 +1,7 @@
 ﻿module TestDomain
 
+open System.Numerics
+
 type Person =
     {
         Name : string
