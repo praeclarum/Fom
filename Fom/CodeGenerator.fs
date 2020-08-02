@@ -37,6 +37,8 @@ let private writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
         w.WriteLine ("           {0}Diff : {1} option", m.Name, m.MemberType)
 
     let writeRecordDiff (ms : RecordMember[]) =
+        w.WriteLine ("[<AutoOpen>]")
+        w.WriteLine ("module {0}DiffOps =", t.Name)
         w.WriteLine ("    let (-) (x : {0}) (y: {0}) =", t.Name)
         for m in ms do
             w.WriteLine ("        let local{0}Diff = if x.{0} <> y.{0} then Some x.{0} else None", m.Name, m.Name)
@@ -57,13 +59,13 @@ let private writeDiffType (w : IO.TextWriter) (t : FomType) : unit =
             | Some x -> sprintf "        | %s of %s option" m.Name x
             | None -> sprintf "        | %s" m.Name
         w.WriteLine (line)
-    w.WriteLine ("    type {0}Diff =", t.Name)
 
+    w.WriteLine ("type {0}Diff =", t.Name)
     match t.Body with
     | RecordBody members ->
-        w.WriteLine "        {"
+        w.WriteLine "    {"
         members |> Seq.iter writeStructMem
-        w.WriteLine "        }"
+        w.WriteLine "    }"
         writeRecordDiff members
     | UnionBody members ->
         members |> Seq.iter writeEnumMem
@@ -95,7 +97,7 @@ let writeAllTypes (w : IO.TextWriter) (fomModule : FomModule) =
     allTypes
     |> Seq.groupBy (fun x -> x.Namespace)
     |> Seq.iter (fun (m, types) ->
-        w.WriteLine ("module {0}.{1}Diff", ns, m)
+        w.WriteLine ("namespace {0}", ns)
         for o in fomModule.Opens do
             w.WriteLine ("open {0}", o)
         types |> Seq.iter (writeDiffType w))
