@@ -29,9 +29,9 @@ module WishfulThinking =
         //| DontCallDiff
 
 
-    let p1 = { Name = "Frank"; Age = 39 }
+    let p1 = { Name = "Frank"; Age = 39; Contacts = [||]; Partner = None }
 
-    let p2 = { Name = "Frank"; Age = 40 }
+    let p2 = { Name = "Frank"; Age = 40; Contacts = [||]; Partner = None }
 
     let diff = p2 - p1
 

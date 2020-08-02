@@ -27,11 +27,19 @@ let private parse (path : string) =
 let private stringIdent (moduleId : LongIdent) =
     String.Join (".", moduleId)
 
-let private synTypeToString (typ : SynType) : string =
+let rec private synTypeToString (typ : SynType) : string =
     match typ with
     | SynType.LongIdent (LongIdentWithDots (id, _)) ->
         stringIdent id
-    | _ -> failwithf "I don't know how to deal with %A" typ
+    | SynType.Array (1, innerType, _) ->
+        synTypeToString innerType + "[]"
+    | SynType.App (SynType.LongIdent (LongIdentWithDots ([typeIdent],[])), _, [typeArg], _, _, true, _) ->
+        let arg = synTypeToString typeArg
+        let r = sprintf "%s %O" arg typeIdent
+        r
+    | _ ->
+        ()
+        failwithf "I don't know how to deal with %A (%O)" typ (typ.GetType())
 
 let rec private convertModuleToInputData (moduleId : LongIdent) (decls : SynModuleDecls) : FomType list =
     printfn "FOUND MODULE %A" moduleId

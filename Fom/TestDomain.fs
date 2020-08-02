@@ -4,9 +4,11 @@ type Person =
     {
         Name : string
         Age : int
+        Contacts : Contact[]
+        Partner : Person option
     }
 
-type Contact = 
+and Contact = 
     | PhoneNumber of string
     | Address of string
     | DontCall
