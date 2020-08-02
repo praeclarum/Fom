@@ -19,8 +19,7 @@
 			<_FomTargetAlreadyExecuted>true</_FomTargetAlreadyExecuted>
 		</PropertyGroup>
 		<FomBuildTask
-			InputFiles = "@(Compile)"
-			OutputPath = "$(OutputPath)"/>
+			InputFiles = "@(Compile)" />
 		<Touch Files="$(IntermediateOutputPath)_Fom.stamp" AlwaysCreate="True" />
 	</Target>
 

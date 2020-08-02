@@ -9,7 +9,6 @@ type FomBuildTask () =
     inherit Task ()
 
     member val InputFiles : ITaskItem[] = [||] with get, set
-    member val OutputPath : string = "" with get, set
 
     override this.Execute () =
         try
@@ -21,14 +20,19 @@ type FomBuildTask () =
                 |> List.filter (fun x ->
                     x.ItemSpec.EndsWith("Domain.fs", StringComparison.CurrentCultureIgnoreCase))
                 |> List.map (fun x -> IO.Path.GetFullPath x.ItemSpec)
-            printfn "%A" filesToConvert
+            //printfn "%A" filesToConvert
 
-            let allTypes =
-                filesToConvert
-                |> List.collect TypeParser.parseAllTypes
+            for fileToConvert in filesToConvert do
 
-            CodeGenerator.writeAllTypes Console.Out allTypes
-            true
+                let types = TypeParser.parseAllTypes fileToConvert
+
+                let outputDir = IO.Path.GetDirectoryName fileToConvert
+                let outputName = IO.Path.GetFileNameWithoutExtension fileToConvert + "Diff.fs"
+                let outputPath = IO.Path.Combine (outputDir, outputName)
+                use output = new IO.StreamWriter (outputPath)
+                
+                CodeGenerator.writeAllTypes output types
+            false
         with ex ->
             this.Log.LogErrorFromException(ex, false)
             false

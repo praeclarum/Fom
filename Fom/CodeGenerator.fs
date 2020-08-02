@@ -84,7 +84,7 @@ let writeAllTypes (w : IO.TextWriter) allTypes =
     allTypes
     |> Seq.groupBy (fun x -> x.Namespace)
     |> Seq.iter (fun (m, types) ->
-        w.WriteLine ("module {0} = ", m)
+        w.WriteLine ("module {0}Diff = ", m)
         types |> Seq.iter (writeDiffType w))
 
 
