@@ -33,7 +33,7 @@ For example, if I download two `Person` objects, I can tell the difference:
     let whatChanged = person2 - person1
 ```
 
-No, `whatChanged` will have all `None`-fields except the `AgeDiff` field
+Now, `whatChanged` will have all `None`-fields except the `AgeDiff` field
 will have the new value.
 
 Then diff looks like this:
