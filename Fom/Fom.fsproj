@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
@@ -17,6 +17,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <PackageReference Include="FSharp.Compiler.Service" Version="34.1.1" />
-    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="16.6.0" />
+    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="17.14.7" />
   </ItemGroup>
 </Project>
